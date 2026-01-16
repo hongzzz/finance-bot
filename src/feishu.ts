@@ -8,7 +8,7 @@ export async function sendToFeishu(webhookUrl: string, article: WscnArticle) {
 
   const date = new Date(article.display_time * 1000).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
   const title = article.title ? `**${article.title}**\n` : '';
-  const content = article.content_text.replace(/\n/g, '\n\n'); // Add breathing room for markdown
+  const content = article.content_text.replace(/\n/g, '\n\n');
 
   const payload = {
     msg_type: 'interactive',
@@ -21,15 +21,41 @@ export async function sendToFeishu(webhookUrl: string, article: WscnArticle) {
           tag: 'plain_text',
           content: '华尔街见闻快讯',
         },
-        template: article.score && article.score >= 2 ? 'red' : 'blue', // Highlight important news
+        template: article.score && article.score >= 2 ? 'red' : 'blue',
       },
       elements: [
         {
           tag: 'div',
           text: {
             tag: 'lark_md',
-            content: `${title}${content}\n\n🕒 ${date} | [原文链接](${article.uri})`,
+            content: `${title}${content}`,
           },
+        },
+        {
+          tag: 'action',
+          actions: [
+            {
+              tag: 'button',
+              text: {
+                tag: 'plain_text',
+                content: '阅读原文',
+              },
+              url: article.uri,
+              type: article.score && article.score >= 2 ? 'danger' : 'primary',
+            },
+          ],
+        },
+        {
+          tag: 'hr',
+        },
+        {
+          tag: 'note',
+          elements: [
+            {
+              tag: 'plain_text',
+              content: `🕒 ${date}`,
+            },
+          ],
         },
       ],
     },
