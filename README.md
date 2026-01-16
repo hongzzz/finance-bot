@@ -9,8 +9,8 @@ A serverless financial news forwarder that fetches 7x24 news from Wall Street Ne
 
 ## Tech Stack
 - Node.js + TypeScript
-- Vercel (Serverless Functions)
 - Upstash Redis
+- Cloudflare Workers
 
 ## Setup
 
@@ -28,12 +28,6 @@ A serverless financial news forwarder that fetches 7x24 news from Wall Street Ne
    You can run the cron logic manually using `ts-node` (after installing it).
 
 ## Deployment
-
-### Vercel (Optional)
-Deploy to Vercel (Note: Hobby plan limited to daily crons):
-```bash
-vercel
-```
 
 ### Cloudflare Workers (Recommended)
 Deploy to Cloudflare Workers for 1-minute crons:
