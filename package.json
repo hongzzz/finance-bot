@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "deploy:cf": "wrangler deploy",
+    "dev:cf": "wrangler dev"
   },
   "keywords": [],
   "author": "",

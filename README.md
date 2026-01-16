@@ -29,8 +29,21 @@ A serverless financial news forwarder that fetches 7x24 news from Wall Street Ne
 
 ## Deployment
 
-Deploy to Vercel:
+### Vercel (Optional)
+Deploy to Vercel (Note: Hobby plan limited to daily crons):
 ```bash
 vercel
 ```
-Ensure the cron job is active as defined in `vercel.json`.
+
+### Cloudflare Workers (Recommended)
+Deploy to Cloudflare Workers for 1-minute crons:
+1. **Login**: `npx wrangler login`
+2. **Deploy**: `npm run deploy:cf`
+3. **Secrets**: Set environment variables in Cloudflare Dashboard or via:
+   ```bash
+   npx wrangler secret put FEISHU_WEBHOOK_URL
+   npx wrangler secret put KV_REST_API_URL
+   npx wrangler secret put KV_REST_API_TOKEN
+   ```
+
+Ensure the cron job is active as defined in `wrangler.toml`.
