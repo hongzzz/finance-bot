@@ -14,7 +14,6 @@
   "type": "commonjs",
   "dependencies": {
     "@upstash/redis": "^1.36.1",
-    "axios": "^1.13.2",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.3"
   },

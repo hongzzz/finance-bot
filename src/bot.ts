@@ -1,5 +1,4 @@
 import { Redis } from '@upstash/redis';
-import axios from 'axios';
 import { WscnResponse } from './types';
 import { sendToFeishu } from './feishu';
 
@@ -21,8 +20,12 @@ export async function checkAndSendNews(config: {
   });
 
   console.log('Fetching news from WSCN...');
-  const response = await axios.get<WscnResponse>(WSCN_API_URL);
-  const items = response.data.data.items;
+  const response = await fetch(WSCN_API_URL);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch news: ${response.statusText}`);
+  }
+  const data = await response.json() as WscnResponse;
+  const items = data.data.items;
 
   if (!items || items.length === 0) {
     return 'No items found from API';

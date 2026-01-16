@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { WscnArticle } from './types';
 
 export async function sendToFeishu(webhookUrl: string, article: WscnArticle) {
@@ -37,7 +36,19 @@ export async function sendToFeishu(webhookUrl: string, article: WscnArticle) {
   };
 
   try {
-    await axios.post(webhookUrl, payload);
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Feishu API error (${response.status}): ${errorText}`);
+    }
+
     console.log(`Sent to Feishu: ${article.id}`);
   } catch (error) {
     console.error('Failed to send to Feishu:', error);
