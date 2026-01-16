@@ -3,14 +3,14 @@
 A serverless financial news forwarder that fetches 7x24 news from Wall Street News (WSCN) and pushes formatted cards to Feishu/Lark groups.
 
 ## Features
-- **Cron-driven**: Runs every minute via Vercel Cron.
+- **Cron-driven**: Runs every minute via Cloudflare Workers Cron Triggers.
 - **Deduplication**: Uses Upstash Redis to track the last processed news ID.
 - **Rich Notifications**: Sends interactive message cards to Feishu with importance highlighting (red/blue).
 
 ## Tech Stack
-- Node.js + TypeScript
-- Upstash Redis
+- TypeScript
 - Cloudflare Workers
+- Upstash Redis
 
 ## Setup
 
@@ -20,20 +20,30 @@ A serverless financial news forwarder that fetches 7x24 news from Wall Street Ne
    npm install
    ```
 3. **Configure Environment Variables**:
-   Copy `.env.example` to `.env` and fill in the values:
+   Copy `.env.example` to `.env` (for local dev) and fill in the values:
    - `FEISHU_WEBHOOK_URL`
    - `KV_REST_API_URL`
    - `KV_REST_API_TOKEN`
-4. **Local Development**:
-   You can run the cron logic manually using `ts-node` (after installing it).
+
+## Development
+
+Run the worker locally:
+```bash
+npm run dev:cf
+```
 
 ## Deployment
 
-### Cloudflare Workers (Recommended)
-Deploy to Cloudflare Workers for 1-minute crons:
-1. **Login**: `npx wrangler login`
-2. **Deploy**: `npm run deploy:cf`
-3. **Secrets**: Set environment variables in Cloudflare Dashboard or via:
+1. **Login to Cloudflare**:
+   ```bash
+   npx wrangler login
+   ```
+2. **Deploy**:
+   ```bash
+   npm run deploy:cf
+   ```
+3. **Set Secrets**:
+   Set environment variables in Cloudflare Dashboard or via CLI:
    ```bash
    npx wrangler secret put FEISHU_WEBHOOK_URL
    npx wrangler secret put KV_REST_API_URL
