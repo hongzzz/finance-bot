@@ -1,4 +1,4 @@
-import { Redis } from '@upstash/redis';
+import { Redis } from '@upstash/redis/cloudflare';
 import { WscnResponse } from './types';
 import { sendToFeishu } from './feishu';
 

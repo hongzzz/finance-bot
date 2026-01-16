@@ -1,7 +1,7 @@
 #:schema node_modules/wrangler/config-schema.json
 name = "finance-bot"
 main = "src/worker.ts"
-compatibility_date = "2024-01-17"
+compatibility_date = "2025-01-01"
 
 [triggers]
 crons = ["* * * * *"]
