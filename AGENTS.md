@@ -6,34 +6,40 @@ This document outlines the architecture and operational logic of the `finance-bo
 A serverless news forwarder that fetches 7x24 financial news from Wall Street News (WSCN) and pushes formatted cards to Feishu/Lark groups.
 
 ## Tech Stack
-- **Runtime**: Node.js (TypeScript)
-- **Deployment**: Vercel (Serverless Functions)
-- **Scheduling**: Vercel Cron Jobs (`* * * * *`)
+- **Runtime**: Cloudflare Workers
+- **Language**: TypeScript
+- **Scheduling**: Cloudflare Workers Triggers (Cron)
 - **State Management**: Upstash Redis (to track `last_id`)
-- **API Communication**: Axios
+- **Architecture**: Hexagonal / Clean Architecture (Interfaces + Adapters)
+
+## Architecture
+
+The project is structured to separate business logic from external dependencies:
+
+- **`src/worker.ts`**: The entry point (Composition Root). Wires up dependencies and handles the Cloudflare Worker events (`scheduled`, `fetch`).
+- **`src/core/bot.ts`**: Pure business logic (`FinanceBot`). It knows *how* to process news but not *where* it comes from or goes to.
+- **`src/interfaces/index.ts`**: Defines the contracts (`INewsSource`, `IStateStorage`, `INotifier`) that the core logic relies on.
+- **`src/adapters/`**: Concrete implementations of the interfaces.
+    - `source-wscn.ts`: Fetches from Wall Street News API.
+    - `storage-upstash.ts`: Persists state to Upstash Redis.
+    - `notifier-feishu.ts`: Sends messages to Feishu Webhook.
 
 ## Core Logic Flow
-1. **Trigger**: Vercel Cron hits `/api/cron` every minute.
-2. **Fetch**: GET `https://api-one-wscn.awtmt.com/apiv1/content/lives?channel=global-channel&limit=10`.
-3. **State Check**: Retrieve `wscn_last_id` from Upstash Redis.
-4. **Filter**: Identify items with `id > last_id`.
-5. **Sort**: Sort new items in ascending order (chronological) to ensure sequential delivery.
-6. **Push**: For each new item, send an interactive card to Feishu Webhook.
-7. **Update**: Update `wscn_last_id` in Redis after successful delivery.
-
-## Key Files
-- `api/cron.ts`: Vercel serverless entry point.
-- `src/bot.ts`: Main orchestration logic.
-- `src/feishu.ts`: Feishu message card formatting and delivery.
-- `src/types.ts`: Type definitions for WSCN API responses.
-- `vercel.json`: Cron job configuration.
+1. **Trigger**: Cloudflare Worker Cron hits the `scheduled` handler.
+2. **Fetch**: `WscnSource` calls WSCN API.
+3. **State Check**: `UpstashStorage` retrieves the last processed ID.
+4. **Filter & Sort**: Core logic filters items where `id > last_id` and sorts them chronologically.
+5. **Process**:
+    - If `score >= 2` (Important), `FeishuNotifier` sends a card.
+    - If not, it is skipped (but still marked as processed).
+6. **Update**: `UpstashStorage` updates the `last_id` after each item to ensure reliable processing.
 
 ## Environment Variables Required
 - `FEISHU_WEBHOOK_URL`: The full webhook URL from Feishu Bot.
 - `KV_REST_API_URL`: Upstash Redis REST URL.
 - `KV_REST_API_TOKEN`: Upstash Redis REST Token.
 
-## Maintenance Notes
-- **Rate Limiting**: The WSCN API is currently public but may implement rate limiting. The 1-minute interval is generally safe.
-- **Message Cards**: Card templates use `blue` for regular news and `red` for items with a `score >= 2`.
-- **Error Handling**: Failures in sending a single message will stop the loop to prevent ID skip, ensuring "at least once" delivery upon next retry.
+## Extending the Bot
+- **New Source**: Implement `INewsSource` in `src/adapters/` and update `src/worker.ts` to use it.
+- **New Storage**: Implement `IStateStorage` (e.g., for Cloudflare KV or D1).
+- **New Output**: Implement `INotifier` (e.g., for Slack, Discord, or Email).

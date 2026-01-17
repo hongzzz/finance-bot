@@ -1,4 +1,7 @@
-import { checkAndSendNews } from './bot';
+import { FinanceBot } from './core/bot';
+import { WscnSource } from './adapters/source-wscn';
+import { UpstashStorage } from './adapters/storage-upstash';
+import { FeishuNotifier } from './adapters/notifier-feishu';
 
 export interface Env {
     FEISHU_WEBHOOK_URL: string;
@@ -10,25 +13,28 @@ export default {
     async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
         console.log(`Cron triggered at ${new Date(event.scheduledTime).toISOString()}`);
 
+        const bot = new FinanceBot(
+            new WscnSource(),
+            new UpstashStorage(env.KV_REST_API_URL, env.KV_REST_API_TOKEN),
+            new FeishuNotifier(env.FEISHU_WEBHOOK_URL)
+        );
+
         ctx.waitUntil(
-            checkAndSendNews({
-                redisUrl: env.KV_REST_API_URL,
-                redisToken: env.KV_REST_API_TOKEN,
-                webhookUrl: env.FEISHU_WEBHOOK_URL,
-            })
+            bot.run()
                 .then(result => console.log('Bot success:', result))
                 .catch(err => console.error('Bot failed:', err.message))
         );
     },
 
-    // Also support manual trigger via HTTP for testing
     async fetch(request: Request, env: Env, ctx: ExecutionContext) {
         try {
-            const result = await checkAndSendNews({
-                redisUrl: env.KV_REST_API_URL,
-                redisToken: env.KV_REST_API_TOKEN,
-                webhookUrl: env.FEISHU_WEBHOOK_URL,
-            });
+            const bot = new FinanceBot(
+                new WscnSource(),
+                new UpstashStorage(env.KV_REST_API_URL, env.KV_REST_API_TOKEN),
+                new FeishuNotifier(env.FEISHU_WEBHOOK_URL)
+            );
+            
+            const result = await bot.run();
             return new Response(result, { status: 200 });
         } catch (err: any) {
             return new Response(err.message, { status: 500 });
