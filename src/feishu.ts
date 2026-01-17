@@ -8,7 +8,7 @@ export async function sendToFeishu(webhookUrl: string, article: WscnArticle) {
 
   const date = new Date(article.display_time * 1000).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
   const title = article.title ? `**${article.title}**\n` : '';
-  const content = article.content_text.replace(/\n/g, '\n\n');
+  const content = article.content_text;
 
   const payload = {
     msg_type: 'interactive',
@@ -21,7 +21,7 @@ export async function sendToFeishu(webhookUrl: string, article: WscnArticle) {
           tag: 'plain_text',
           content: '华尔街见闻快讯',
         },
-        template: article.score && article.score >= 2 ? 'red' : 'blue',
+        template: article.score && article.score > 2 ? 'red' : 'blue',
       },
       elements: [
         {
