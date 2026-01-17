@@ -5,6 +5,7 @@ export interface WscnArticle {
   uri: string;
   title?: string;
   score?: number; // Importance score
+  images?: string[];
 }
 
 export interface WscnResponse {

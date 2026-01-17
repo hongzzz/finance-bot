@@ -47,12 +47,21 @@ export async function checkAndSendNews(config: {
   }
 
   console.log(`Found ${newItems.length} new items.`);
+  console.log('items', JSON.stringify(newItems));
 
   // Send to Feishu
   for (const item of newItems) {
     try {
-      await sendToFeishu(config.webhookUrl, item);
-      // Update Redis after each successful send
+      // Only send important news (score >= 2)
+      if (item.score && item.score >= 2) {
+        await sendToFeishu(config.webhookUrl, item);
+        console.log(`Sent important item: ${item.id}`);
+      } else {
+        console.log(`Skipping unimportant item: ${item.id} (score: ${item.score})`);
+      }
+      
+      // Update Redis after each processed item (whether sent or skipped)
+      // This ensures we don't get stuck re-fetching the same unimportant items
       await redis.set(REDIS_LAST_ID_KEY, item.id);
     } catch (error) {
       console.error(`Stopping delivery at item ${item.id} due to error.`);
