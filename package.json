@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
+    "typecheck": "tsc --noEmit",
     "deploy:cf": "wrangler deploy",
     "dev:cf": "wrangler dev"
   },
@@ -13,9 +14,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@upstash/redis": "^1.36.1",
-    "date-fns": "^4.1.0",
-    "dotenv": "^17.2.3"
+    "@upstash/redis": "^1.36.1"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241220.0",

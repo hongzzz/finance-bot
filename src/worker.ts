@@ -9,30 +9,43 @@ export interface Env {
     KV_REST_API_TOKEN: string;
 }
 
+function validateEnv(env: Env): void {
+    const required = ['FEISHU_WEBHOOK_URL', 'KV_REST_API_URL', 'KV_REST_API_TOKEN'] as const;
+    const missing = required.filter(key => !env[key]);
+    if (missing.length > 0) {
+        throw new Error(`Missing env vars: ${missing.join(', ')}`);
+    }
+}
+
+function createBot(env: Env): FinanceBot {
+    validateEnv(env);
+    return new FinanceBot(
+        new WscnSource(),
+        new UpstashStorage(env.KV_REST_API_URL, env.KV_REST_API_TOKEN),
+        new FeishuNotifier(env.FEISHU_WEBHOOK_URL)
+    );
+}
+
 export default {
     async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
         console.log(`Cron triggered at ${new Date(event.scheduledTime).toISOString()}`);
 
-        const bot = new FinanceBot(
-            new WscnSource(),
-            new UpstashStorage(env.KV_REST_API_URL, env.KV_REST_API_TOKEN),
-            new FeishuNotifier(env.FEISHU_WEBHOOK_URL)
-        );
+        try {
+            const bot = createBot(env);
 
-        ctx.waitUntil(
-            bot.run()
-                .then(result => console.log('Bot success:', result))
-                .catch(err => console.error('Bot failed:', err.message))
-        );
+            ctx.waitUntil(
+                bot.run()
+                    .then(result => console.log('Bot success:', result))
+                    .catch(err => console.error('Bot failed:', err.message))
+            );
+        } catch (e: any) {
+            console.error('Scheduled task error:', e.message);
+        }
     },
 
     async fetch(request: Request, env: Env, ctx: ExecutionContext) {
         try {
-            const bot = new FinanceBot(
-                new WscnSource(),
-                new UpstashStorage(env.KV_REST_API_URL, env.KV_REST_API_TOKEN),
-                new FeishuNotifier(env.FEISHU_WEBHOOK_URL)
-            );
+            const bot = createBot(env);
             
             const result = await bot.run();
             return new Response(result, { status: 200 });

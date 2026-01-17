@@ -1,13 +1,13 @@
 import { WscnArticle } from './types';
 
-export interface NewsArticle {
+export interface NewsArticle<TRaw = unknown> {
   id: number | string;
   title?: string;
   content: string;
   url: string;
   timestamp: number;
   score?: number;
-  raw: any;
+  raw: TRaw;
 }
 
 export interface INewsSource {
