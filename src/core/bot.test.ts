@@ -47,9 +47,10 @@ describe('FinanceBot Core Logic', () => {
     // 1. Should filter out ID 100
     // 2. Should see 101 and 102 as new items
     
-    // Check Notification: Only 102 (score >= 2)
-    expect(notifier.notifiedItems).toHaveLength(1);
-    expect(notifier.notifiedItems[0].id).toBe(102);
+    // Check Notification: Both 101 and 102
+    expect(notifier.notifiedItems).toHaveLength(2);
+    expect(notifier.notifiedItems[0].id).toBe(101);
+    expect(notifier.notifiedItems[1].id).toBe(102);
 
     // Check State Update: Should end up at 102
     expect(storage.lastId).toBe(102);

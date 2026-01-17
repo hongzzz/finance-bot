@@ -33,13 +33,8 @@ export class FinanceBot {
     // 4. Process items
     for (const item of newItems) {
       try {
-        // Business Rule: Only send important news (score >= 2)
-        // if (item.score && item.score >= 2) {
         await this.notifier.notify(item);
-        // console.log(`Sent important item: ${item.id}`);
-        // } else {
-        // console.log(`Skipping unimportant item: ${item.id} (score: ${item.score})`);
-        // }
+        console.log(`Sent item: ${item.id}`);
 
         // 5. Update state after each item to ensure "at least once" delivery semantics
         // even if the script crashes later

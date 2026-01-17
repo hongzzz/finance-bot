@@ -13,64 +13,13 @@ export class FeishuNotifier implements INotifier {
       return;
     }
 
-    const date = new Date(article.timestamp * 1000).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
-    const title = article.title ? `**${article.title}**\n` : '';
-    const content = article.content;
-    
-    // Style Logic:
-    // Consistent style: Red/Danger if score > 2, Blue/Primary otherwise.
-    // Note: The bot only sends items with score >= 2.
-    // So score == 2 will be Blue/Primary, score > 2 will be Red/Danger.
-    const isImportant = article.score && article.score > 2;
+    const title = article.title ? `【${article.title}】\n` : '';
+    const textContent = `${title}${article.content}`;
 
     const payload = {
-      msg_type: 'interactive',
-      card: {
-        config: {
-          wide_screen_mode: true,
-        },
-        header: {
-          title: {
-            tag: 'plain_text',
-            content: '华尔街见闻快讯',
-          },
-          template: isImportant ? 'red' : 'blue',
-        },
-        elements: [
-          {
-            tag: 'div',
-            text: {
-              tag: 'lark_md',
-              content: `${title}${content}`,
-            },
-          },
-          {
-            tag: 'action',
-            actions: [
-              {
-                tag: 'button',
-                text: {
-                  tag: 'plain_text',
-                  content: '阅读原文',
-                },
-                url: article.url,
-                type: isImportant ? 'danger' : 'primary',
-              },
-            ],
-          },
-          {
-            tag: 'hr',
-          },
-          {
-            tag: 'note',
-            elements: [
-              {
-                tag: 'plain_text',
-                content: `🕒 ${date}`,
-              },
-            ],
-          },
-        ],
+      msg_type: 'text',
+      content: {
+        text: textContent,
       },
     };
 
