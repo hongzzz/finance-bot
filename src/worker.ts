@@ -2,9 +2,13 @@ import { FinanceBot } from './core/bot';
 import { WscnSource } from './adapters/source-wscn';
 import { UpstashStorage } from './adapters/storage-upstash';
 import { FeishuNotifier } from './adapters/notifier-feishu';
+import { WeChatNotifier } from './adapters/notifier-wechat';
+import { CompositeNotifier } from './adapters/notifier-composite';
+import { INotifier } from './interfaces';
 
 export interface Env {
     FEISHU_WEBHOOK_URL: string;
+    WECHAT_WEBHOOK_URL?: string;
     KV_REST_API_URL: string;
     KV_REST_API_TOKEN: string;
 }
@@ -19,10 +23,16 @@ function validateEnv(env: Env): void {
 
 function createBot(env: Env): FinanceBot {
     validateEnv(env);
+
+    const notifiers: INotifier[] = [new FeishuNotifier(env.FEISHU_WEBHOOK_URL)];
+    if (env.WECHAT_WEBHOOK_URL) {
+        notifiers.push(new WeChatNotifier(env.WECHAT_WEBHOOK_URL));
+    }
+
     return new FinanceBot(
         new WscnSource(),
         new UpstashStorage(env.KV_REST_API_URL, env.KV_REST_API_TOKEN),
-        new FeishuNotifier(env.FEISHU_WEBHOOK_URL)
+        new CompositeNotifier(notifiers)
     );
 }
 
