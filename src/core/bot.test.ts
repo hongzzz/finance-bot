@@ -31,7 +31,7 @@ describe('FinanceBot Core Logic', () => {
     bot = new FinanceBot(source, storage, notifier);
   });
 
-  it('should process new important items and update state', async () => {
+  it('should only notify important items (score >= 2) but mark all as processed', async () => {
     // Setup
     storage.lastId = 100;
     source.items = [
@@ -44,18 +44,18 @@ describe('FinanceBot Core Logic', () => {
     const result = await bot.run();
 
     // Assert
-    // 1. Should filter out ID 100
-    // 2. Should see 101 and 102 as new items
-    
-    // Check Notification: Both 101 and 102
-    expect(notifier.notifiedItems).toHaveLength(2);
-    expect(notifier.notifiedItems[0].id).toBe(101);
-    expect(notifier.notifiedItems[1].id).toBe(102);
+    // 1. Should filter out ID 100 (already processed)
+    // 2. Should skip notifying 101 (score < 2) but still mark it processed
+    // 3. Should notify 102 (score >= 2)
 
-    // Check State Update: Should end up at 102
+    // Check Notification: Only 102 (score >= 2)
+    expect(notifier.notifiedItems).toHaveLength(1);
+    expect(notifier.notifiedItems[0].id).toBe(102);
+
+    // Check State Update: Should end up at 102 (all items marked processed)
     expect(storage.lastId).toBe(102);
 
-    expect(result).toContain('Processed 2 items');
+    expect(result).toContain('Processed 2 items (sent 1)');
   });
 
   it('should handle unordered input and process chronologically', async () => {

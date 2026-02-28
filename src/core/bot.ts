@@ -30,11 +30,17 @@ export class FinanceBot {
 
     console.log(`Found ${newItems.length} new items.`);
 
-    // 4. Process items
+    // 4. Process items: only notify important news (score >= 2), but mark all as processed
+    let sentCount = 0;
     for (const item of newItems) {
       try {
-        await this.notifier.notify(item);
-        console.log(`Sent item: ${item.id}`);
+        if ((item.score ?? 0) >= 2) {
+          await this.notifier.notify(item);
+          console.log(`Sent item: ${item.id} (score: ${item.score})`);
+          sentCount++;
+        } else {
+          console.log(`Skipped item: ${item.id} (score: ${item.score ?? 0})`);
+        }
 
         // 5. Update state after each item to ensure "at least once" delivery semantics
         // even if the script crashes later
@@ -45,6 +51,6 @@ export class FinanceBot {
       }
     }
 
-    return `Processed ${newItems.length} items. Latest ID: ${newItems[newItems.length - 1].id}`;
+    return `Processed ${newItems.length} items (sent ${sentCount}). Latest ID: ${newItems[newItems.length - 1].id}`;
   }
 }
