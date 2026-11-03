@@ -10,7 +10,7 @@
 //   NEWS_FILE         read news JSON (WSCN items array) from file instead of the API (for local testing)
 
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { appendFileSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const WSCN_API = 'https://api-one-wscn.awtmt.com/apiv1/content/lives';
@@ -171,6 +171,9 @@ async function main() {
 
   if (process.env.DRY_RUN === '1') {
     console.log(`\n${message}`);
+    if (process.env.GITHUB_STEP_SUMMARY) {
+      appendFileSync(process.env.GITHUB_STEP_SUMMARY, `## Digest preview (dry run, not sent)\n\n\`\`\`\n${message}\n\`\`\`\n`);
+    }
     return;
   }
 

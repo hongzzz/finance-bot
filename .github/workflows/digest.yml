@@ -6,6 +6,11 @@ on:
     # the script uses fixed window boundaries, so a late start does not drop or duplicate news.
     - cron: '0 2 * * *'
     - cron: '0 9 * * *'
+  # Preview: on PRs touching the digest, build it in dry-run mode (shown in the run summary, nothing is sent).
+  pull_request:
+    paths:
+      - 'scripts/digest.mjs'
+      - '.github/workflows/digest.yml'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -37,5 +42,5 @@ jobs:
           FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
           WECHAT_WEBHOOK_URL: ${{ secrets.WECHAT_WEBHOOK_URL }}
           DIGEST_MODEL: ${{ vars.DIGEST_MODEL || 'sonnet' }}
-          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+          DRY_RUN: ${{ (github.event_name == 'pull_request' || inputs.dry_run) && '1' || '0' }}
         run: node scripts/digest.mjs
