@@ -53,3 +53,18 @@ npm run dev:cf
    ```
 
 Ensure the cron job is active as defined in `wrangler.toml`.
+## AI Digest (GitHub Actions + Claude Code)
+
+`.github/workflows/digest.yml` runs `scripts/digest.mjs` at **10:00 and 17:00 Beijing time**. It fetches all WSCN 7x24 news since the previous slot (17:00 → 10:00, 10:00 → 17:00), summarizes it with `claude -p`, and pushes one digest message to Feishu / WeChat Work. It uses your Claude subscription, so no API key is needed.
+
+Setup (repo **Settings → Secrets and variables → Actions**):
+- Secret `CLAUDE_CODE_OAUTH_TOKEN`: run `claude setup-token` locally and paste the token here.
+- Secret `FEISHU_WEBHOOK_URL` and/or `WECHAT_WEBHOOK_URL`.
+- Optional variable `DIGEST_MODEL` (default `sonnet`, e.g. `haiku`).
+
+Scheduled workflows only run from the default branch. Trigger it manually via **Actions → News Digest → Run workflow** (tick `dry_run` to only print the digest in the log).
+
+Local test:
+```bash
+DRY_RUN=1 node scripts/digest.mjs
+```
