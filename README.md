@@ -24,6 +24,8 @@ A serverless financial news forwarder that fetches 7x24 news from Wall Street Ne
    - `FEISHU_WEBHOOK_URL`
    - `KV_REST_API_URL`
    - `KV_REST_API_TOKEN`
+   - `WECHAT_WEBHOOK_URL` (optional)
+   - `MIN_SCORE` (optional, default `2`): only news with `score >= MIN_SCORE` is pushed; lower-score items are skipped but still marked as processed. Set to `1` to push everything.
 
 ## Development
 

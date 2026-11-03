@@ -1,11 +1,21 @@
 import { INewsSource, IStateStorage, INotifier } from '../interfaces';
 
+export interface FinanceBotOptions {
+  /** Only items with score >= minScore are pushed. Others are skipped but still marked as processed. */
+  minScore?: number;
+}
+
 export class FinanceBot {
+  private minScore: number;
+
   constructor(
     private source: INewsSource,
     private storage: IStateStorage,
-    private notifier: INotifier
-  ) { }
+    private notifier: INotifier,
+    options: FinanceBotOptions = {}
+  ) {
+    this.minScore = options.minScore ?? 2;
+  }
 
   async run(): Promise<string> {
     // 1. Fetch latest news
@@ -31,10 +41,17 @@ export class FinanceBot {
     console.log(`Found ${newItems.length} new items.`);
 
     // 4. Process items
+    let sent = 0;
     for (const item of newItems) {
       try {
-        await this.notifier.notify(item);
-        console.log(`Sent item: ${item.id}`);
+        // Business Rule: only push important news; skipped items still advance last_id
+        if ((item.score ?? 0) >= this.minScore) {
+          await this.notifier.notify(item);
+          sent++;
+          console.log(`Sent item: ${item.id} (score: ${item.score})`);
+        } else {
+          console.log(`Skipped item: ${item.id} (score: ${item.score})`);
+        }
 
         // 5. Update state after each item to ensure "at least once" delivery semantics
         // even if the script crashes later
@@ -45,6 +62,6 @@ export class FinanceBot {
       }
     }
 
-    return `Processed ${newItems.length} items. Latest ID: ${newItems[newItems.length - 1].id}`;
+    return `Processed ${newItems.length} items, sent ${sent}. Latest ID: ${newItems[newItems.length - 1].id}`;
   }
 }
