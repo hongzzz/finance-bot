@@ -1,0 +1,41 @@
+name: News Digest
+
+on:
+  schedule:
+    # Beijing 10:00 and 17:00 (UTC+8). GitHub may start scheduled runs a few minutes late;
+    # the script uses fixed window boundaries, so a late start does not drop or duplicate news.
+    - cron: '0 2 * * *'
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Only print the digest, do not send'
+        type: boolean
+        default: false
+
+concurrency:
+  group: news-digest
+  cancel-in-progress: false
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Build and send digest
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
+          WECHAT_WEBHOOK_URL: ${{ secrets.WECHAT_WEBHOOK_URL }}
+          DIGEST_MODEL: ${{ vars.DIGEST_MODEL || 'sonnet' }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+        run: node scripts/digest.mjs

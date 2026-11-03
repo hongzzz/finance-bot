@@ -47,15 +47,39 @@ describe('FinanceBot Core Logic', () => {
     // 1. Should filter out ID 100
     // 2. Should see 101 and 102 as new items
     
-    // Check Notification: Both 101 and 102
-    expect(notifier.notifiedItems).toHaveLength(2);
-    expect(notifier.notifiedItems[0].id).toBe(101);
-    expect(notifier.notifiedItems[1].id).toBe(102);
+    // Check Notification: only 102 (101 is below the default minScore of 2)
+    expect(notifier.notifiedItems.map(i => i.id)).toEqual([102]);
 
-    // Check State Update: Should end up at 102
+    // Check State Update: Should end up at 102 (skipped items still marked processed)
     expect(storage.lastId).toBe(102);
 
-    expect(result).toContain('Processed 2 items');
+    expect(result).toContain('Processed 2 items, sent 1');
+  });
+
+  it('should still advance last_id when every new item is skipped', async () => {
+    storage.lastId = 100;
+    source.items = [
+      { id: 101, content: '...', url: '...', timestamp: 1001, score: 1, raw: {} },
+      { id: 102, content: '...', url: '...', timestamp: 1002, raw: {} }, // missing score
+    ];
+
+    await bot.run();
+
+    expect(notifier.notifiedItems).toHaveLength(0);
+    expect(storage.lastId).toBe(102);
+  });
+
+  it('should respect a custom minScore', async () => {
+    bot = new FinanceBot(source, storage, notifier, { minScore: 1 });
+    storage.lastId = 100;
+    source.items = [
+      { id: 101, content: '...', url: '...', timestamp: 1001, score: 1, raw: {} },
+      { id: 102, content: '...', url: '...', timestamp: 1002, score: 2, raw: {} },
+    ];
+
+    await bot.run();
+
+    expect(notifier.notifiedItems.map(i => i.id)).toEqual([101, 102]);
   });
 
   it('should handle unordered input and process chronologically', async () => {

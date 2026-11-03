@@ -9,6 +9,7 @@ import { INotifier } from './interfaces';
 export interface Env {
     FEISHU_WEBHOOK_URL: string;
     WECHAT_WEBHOOK_URL?: string;
+    MIN_SCORE?: string;
     KV_REST_API_URL: string;
     KV_REST_API_TOKEN: string;
 }
@@ -19,6 +20,12 @@ function validateEnv(env: Env): void {
     if (missing.length > 0) {
         throw new Error(`Missing env vars: ${missing.join(', ')}`);
     }
+}
+
+function parseMinScore(value?: string): number | undefined {
+    if (value === undefined || value.trim() === '') return undefined;
+    const n = Number(value);
+    return Number.isFinite(n) ? n : undefined;
 }
 
 function createBot(env: Env): FinanceBot {
@@ -32,7 +39,8 @@ function createBot(env: Env): FinanceBot {
     return new FinanceBot(
         new WscnSource(),
         new UpstashStorage(env.KV_REST_API_URL, env.KV_REST_API_TOKEN),
-        new CompositeNotifier(notifiers)
+        new CompositeNotifier(notifiers),
+        { minScore: parseMinScore(env.MIN_SCORE) }
     );
 }
 
