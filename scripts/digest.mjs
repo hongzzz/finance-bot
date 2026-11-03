@@ -77,12 +77,13 @@ function buildPrompt(windowLabel, count) {
   return `以下是华尔街见闻 ${windowLabel} 的 7x24 快讯，共 ${count} 条（标【重要】的是编辑标红的快讯）。
 请写一份中文市场简报，给关注 A 股、港股、美股和宏观的投资者阅读：
 
-1. 第一行写「📌 核心要点」，然后用 3-5 条列出本时段最重要的事件，每条一句话，写清楚影响。
-2. 然后按主题分组（例如：宏观与政策、A股/港股、美股、大宗商品与外汇、公司动态），每组列 2-4 条要点；没有内容的组直接省略。
-3. 最后用「👀 后续关注」列出 1-3 个接下来值得留意的事件或数据。
+1. 先写「**📌 核心要点**」，然后用 3-5 条列出本时段最重要的事件，每条一句话，写清楚影响。
+2. 然后按主题分组，每组标题单独一行并加粗、带一个 emoji（例如：**🏛 宏观与政策**、**📈 A股/港股**、**🇺🇸 美股**、**🛢 大宗商品与外汇**、**🏢 公司动态**），每组列 2-4 条要点；没有内容的组直接省略。
+3. 最后写「**👀 后续关注**」，列出 1-3 个接下来值得留意的事件或数据。
 
 要求：只根据给出的快讯写，不要编造数据；合并重复或同一事件的快讯；忽略不重要的琐碎消息；
-纯文本加简单的 emoji 和「- 」列表，不要用 Markdown 标题、加粗或表格；总长度控制在 900 字以内。
+格式只用加粗的分组标题和「- 」列表，正文里关键数字可以加粗，不要用 # 标题、表格或链接；分组之间空一行；
+总长度严格控制在 900 字以内，宁短勿长。
 直接输出简报正文，不要任何开场白或解释。`;
 }
 
@@ -140,14 +141,41 @@ async function postJson(url, payload, name, isOk) {
   if (!res.ok || !isOk(json)) throw new Error(`${name} webhook error (${res.status}): ${body}`);
 }
 
-async function sendFeishu(url, text) {
-  // Feishu returns HTTP 200 with a non-zero `code` on failure.
-  await postJson(url, { msg_type: 'text', content: { text } }, 'Feishu',
-    j => (j.code ?? j.StatusCode ?? 0) === 0);
+const DIGEST_TITLE = '📰 AI 财经简报';
+const DIGEST_FOOTER = '🤖 由 AI 汇总生成，仅供参考，不构成投资建议';
+
+/** Feishu interactive card with an orange header, so the digest stands out from the plain-text realtime pushes. */
+export function feishuCard(summary, windowLabel, count) {
+  return {
+    msg_type: 'interactive',
+    card: {
+      config: { wide_screen_mode: true },
+      header: { template: 'orange', title: { tag: 'plain_text', content: DIGEST_TITLE } },
+      elements: [
+        { tag: 'div', text: { tag: 'lark_md', content: `🕘 **${windowLabel}**　|　共 **${count}** 条快讯` } },
+        { tag: 'hr' },
+        { tag: 'markdown', content: summary },
+        { tag: 'hr' },
+        { tag: 'note', elements: [{ tag: 'plain_text', content: DIGEST_FOOTER }] },
+      ],
+    },
+  };
 }
 
-async function sendWeChat(url, text) {
-  for (const chunk of splitByBytes(text, WECHAT_MAX_BYTES)) {
+/** WeChat Work markdown: heading + orange subtitle, split into <=4000-byte messages. */
+export function wechatMarkdown(summary, windowLabel, count) {
+  const header = `# ${DIGEST_TITLE}\n<font color="warning">${windowLabel}｜共 ${count} 条快讯</font>\n\n`;
+  const footer = `\n\n<font color="comment">${DIGEST_FOOTER}</font>`;
+  return splitByBytes(`${header}${summary}${footer}`, WECHAT_MAX_BYTES);
+}
+
+async function sendFeishu(url, card) {
+  // Feishu returns HTTP 200 with a non-zero `code` on failure.
+  await postJson(url, card, 'Feishu', j => (j.code ?? j.StatusCode ?? 0) === 0);
+}
+
+async function sendWeChat(url, chunks) {
+  for (const chunk of chunks) {
     await postJson(url, { msgtype: 'markdown', markdown: { content: chunk } }, 'WeChat',
       j => (j.errcode ?? 0) === 0);
   }
@@ -167,12 +195,14 @@ async function main() {
   }
 
   const summary = summarize(buildPrompt(windowLabel, items.length), newsToText(items));
-  const message = `📰 财经简报｜${windowLabel}（${items.length} 条快讯）\n\n${summary}`;
+  const card = feishuCard(summary, windowLabel, items.length);
+  const wechat = wechatMarkdown(summary, windowLabel, items.length);
 
   if (process.env.DRY_RUN === '1') {
-    console.log(`\n${message}`);
+    console.log(`\n${summary}\n\nFeishu card payload:\n${JSON.stringify(card)}`);
     if (process.env.GITHUB_STEP_SUMMARY) {
-      appendFileSync(process.env.GITHUB_STEP_SUMMARY, `## Digest preview (dry run, not sent)\n\n\`\`\`\n${message}\n\`\`\`\n`);
+      appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+        `## ${DIGEST_TITLE}（预览，未发送）\n\n> ${windowLabel}｜共 ${items.length} 条快讯\n\n${summary}\n`);
     }
     return;
   }
@@ -182,8 +212,8 @@ async function main() {
     throw new Error('Set FEISHU_WEBHOOK_URL and/or WECHAT_WEBHOOK_URL');
   }
   const sends = [];
-  if (FEISHU_WEBHOOK_URL) sends.push(sendFeishu(FEISHU_WEBHOOK_URL, message));
-  if (WECHAT_WEBHOOK_URL) sends.push(sendWeChat(WECHAT_WEBHOOK_URL, message));
+  if (FEISHU_WEBHOOK_URL) sends.push(sendFeishu(FEISHU_WEBHOOK_URL, card));
+  if (WECHAT_WEBHOOK_URL) sends.push(sendWeChat(WECHAT_WEBHOOK_URL, wechat));
   const results = await Promise.allSettled(sends);
   const failures = results.filter(r => r.status === 'rejected');
   failures.forEach(f => console.error(f.reason));
