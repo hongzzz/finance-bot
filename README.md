@@ -53,18 +53,67 @@ npm run dev:cf
    ```
 
 Ensure the cron job is active as defined in `wrangler.toml`.
-## AI Digest (GitHub Actions + Claude Code)
+## AI Digest (GitHub Actions + Codex subscription)
 
-`.github/workflows/digest.yml` runs `scripts/digest.mjs` at **10:00 and 17:00 Beijing time**. It fetches all WSCN 7x24 news since the previous slot (17:00 → 10:00, 10:00 → 17:00), summarizes it with `claude -p`, and pushes one digest to Feishu (orange interactive card) / WeChat Work (markdown), so it stands out from the plain-text realtime pushes. It uses your Claude subscription, so no API key is needed.
+The GitHub-hosted workflow runs at **10:00 and 17:00 Beijing time**, fetches the
+previous news window, summarizes with `codex exec`, and sends Feishu / WeChat Work
+messages. No server or OpenAI API key is required. The realtime Cloudflare Worker
+is independent; it does not run Codex CLI.
 
-Setup (repo **Settings → Secrets and variables → Actions**):
-- Secret `CLAUDE_CODE_OAUTH_TOKEN`: run `claude setup-token` locally and paste the token here.
-- Secret `FEISHU_WEBHOOK_URL` and/or `WECHAT_WEBHOOK_URL`.
-- Optional variable `DIGEST_MODEL` (default `sonnet`, e.g. `haiku`).
+### Subscription login
 
-Scheduled workflows only run from the default branch. Trigger it manually via **Actions → News Digest → Run workflow** (tick `dry_run` to only show the digest in the run summary without sending).
+On your own computer:
 
-Local test:
+```bash
+npm install -g @openai/codex
+codex -c 'cli_auth_credentials_store="file"' login
+# For a headless login, append --device-auth if your account supports it.
+```
+
+Sign in using your ChatGPT subscription account. The file-backed login stores
+credentials at `~/.codex/auth.json` (or your explicitly configured CODEX_HOME).
+Do not use or extract credentials injected into this cloud task.
+
+In repository **Settings → Secrets and variables → Actions**:
+
+- Add secret `CODEX_AUTH_JSON` containing the complete local auth.json. Treat it as
+  account credentials: never paste it in chat, commit it, or upload it as an artifact.
+- Keep `FEISHU_WEBHOOK_URL` and/or `WECHAT_WEBHOOK_URL` as secrets.
+- Leave `DIGEST_MODEL` unset for Codex's default model, or set a model available
+  to your account.
+
+The workflow restores credentials with private permissions into a temporary
+CODEX_HOME, checks login, and removes them after the job. Only the authentication
+step receives CODEX_AUTH_JSON. The job has read-only repository permissions.
+
+**Renewal limitation:** hosted runners discard refreshed login state. If OAuth tokens
+rotate, expire or are revoked, a later run may fail. Log in locally again and replace
+CODEX_AUTH_JSON. This is not a permanent-token solution; subscription quotas also
+apply. Authentication failure stops delivery, without falling back to another provider.
+
+### Verify before delivery
+
+Run **Actions → News Digest → Run workflow** with `dry_run=true`. It calls the
+model and consumes quota, but only prints the digest and writes the Actions summary.
+Scheduled workflows run from the default branch. A real subscription-authenticated
+Actions run is still required to validate end-to-end behavior after configuring the
+secret; local mocked checks do not establish credential validity.
+
+Local preview after Codex login:
+
 ```bash
 DRY_RUN=1 node scripts/digest.mjs
+# NEWS_FILE=/absolute/path/news.json can replace live news fetching.
+```
+
+The summarizer uses an empty temporary working directory, read-only sandbox and the
+final-answer output file, then removes temporary outputs. Read-only is not a guarantee
+that no tools can run; the prompt treats news as data and requests no tool use.
+
+Checks:
+
+```bash
+node scripts/check-digest.mjs
+npm run typecheck
+npm test -- --runInBand
 ```

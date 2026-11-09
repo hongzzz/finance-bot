@@ -21,6 +21,10 @@ jobs:
   digest:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      CODEX_HOME: ${{ runner.temp }}/finance-codex
     steps:
       - uses: actions/checkout@v4
 
@@ -28,14 +32,35 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install Claude Code
-        run: npm install -g @anthropic-ai/claude-code
+      - name: Install Codex
+        run: npm install -g @openai/codex
+
+      - name: Restore Codex subscription login
+        env:
+          CODEX_AUTH_JSON: ${{ secrets.CODEX_AUTH_JSON }}
+        run: |
+          umask 077
+          mkdir -p "$CODEX_HOME"
+          node --input-type=module <<'JS'
+          import { writeFileSync } from 'node:fs';
+          const raw = process.env.CODEX_AUTH_JSON;
+          if (!raw) throw new Error('Set CODEX_AUTH_JSON in Actions secrets');
+          const auth = JSON.parse(raw);
+          if (!auth.tokens?.access_token || !auth.tokens?.refresh_token) {
+            throw new Error('Expected a ChatGPT subscription auth.json with OAuth tokens');
+          }
+          writeFileSync(`${process.env.CODEX_HOME}/auth.json`, raw, { mode: 0o600 });
+          JS
+          codex login status
 
       - name: Build and send digest
         env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
           WECHAT_WEBHOOK_URL: ${{ secrets.WECHAT_WEBHOOK_URL }}
-          DIGEST_MODEL: ${{ vars.DIGEST_MODEL || 'sonnet' }}
+          DIGEST_MODEL: ${{ vars.DIGEST_MODEL }}
           DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
         run: node scripts/digest.mjs
+
+      - name: Remove temporary Codex credentials
+        if: always()
+        run: rm -rf -- "$CODEX_HOME"
