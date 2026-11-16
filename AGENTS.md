@@ -34,9 +34,6 @@ The project is structured to separate business logic from external dependencies:
     - If not, it is skipped (but still marked as processed).
 6. **Update**: `UpstashStorage` updates the `last_id` after each item to ensure reliable processing.
 
-## AI Digest
-- `scripts/digest.mjs` + `.github/workflows/digest.yml`: GitHub Actions job at 10:00 / 17:00 Beijing time. Fetches WSCN news for the window since the previous slot, summarizes via `claude -p` (subscription token `CLAUDE_CODE_OAUTH_TOKEN`), pushes to Feishu / WeChat Work. Independent from the Worker.
-
 ## Environment Variables Required
 - `FEISHU_WEBHOOK_URL`: The full webhook URL from Feishu Bot.
 - `KV_REST_API_URL`: Upstash Redis REST URL.
